@@ -1,6 +1,6 @@
 ---
 title: "Project 3"
-author: "Sia Gao"
+author: "Sia Gao, Marc Luzuriaga, Reagan Lee, Jiaxuan Huang"
 date: "2024-12-06"
 output: pdf_document
 ---
