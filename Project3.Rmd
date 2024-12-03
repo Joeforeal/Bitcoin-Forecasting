@@ -172,14 +172,128 @@ After evaluating the ARIMA model, we will next explore the ETS (Error, Trend, Se
 
 
 ## NNETAR (Jiaxuan)
+fit and summary
 ```{R, include = T, echo = T, warning = F, message = F}
+# Fit the NNETAR model to the training data
+nnetar_model <- nnetar(train_data)
 
+# Print the NNETAR model summary
+summary(nnetar_model)
 ```
+From model summary, the NNETAR model uses a single hidden layer with basic lag parameters and produces forecasts by averaging results from multiple models to capture non-linear patterns in the data.
+
+predict
+```{R, include = T, echo = T, warning = F, message = F}
+# Generate forecasts for the testing period using NNETAR
+nnetar_forecast <- forecast(nnetar_model, h = forecast_horizon)
+
+# Convert NNETAR forecast to a time series aligned with the testing set
+nnetar_forecast <- ts(nnetar_forecast$mean, 
+                      start = time(test_data)[1], 
+                      frequency = frequency(all_data))
+
+# Plot training data, testing data, and NNETAR forecast
+autoplot(train_data, series = "Training Data") +
+  autolayer(test_data, series = "Testing Data") +
+  autolayer(nnetar_forecast, series = "NNETAR Forecast") +
+  ggtitle("NNETAR Forecast with Training and Testing Data") +
+  ylab("Returns") +
+  xlab("Time") +
+  theme_minimal() +
+  scale_color_manual(values = c("red", "grey", "blue")) +
+  labs(color = "Series")
+```
+From the plots, the NNETAR forecast is a horizontal line. It is reasonable since the data is stationary, seeming ly less volatile than test set.
+
+
+Model preformance validation (AIC/BIC omitted since unsupported by neural networks)
+```{R, include = T, echo = T, warning = F, message = F}
+# Calculate accuracy metrics for NNETAR
+nnetar_accuracy <- accuracy(nnetar_forecast, test_data)
+
+# Display the accuracy metrics
+print(nnetar_accuracy)
+```
+
+
+
+The accuracy metrics for the ARIMA model show an RMSE of 0.0249 and an MAE of 0.0174, indicating reasonable predictive accuracy. The Mean Error is quite low at 0.0013, suggesting minimal bias in the forecasts. However, the Mean Percentage Error and Mean Absolute Percentage Error are relatively high, indicating that there are substantial relative errors, which may be due to high volatility in the data. The acf of 0.027 is higher than the original data, suggesting weaker stationarity Theil's U statistic, close to 1, suggests that the model performs similarly to a naive benchmark model.
+
+Check for residuals:
+```{R, include = T, echo = T, warning = F, message = F}
+# Check residual diagnostics for the NNETAR model
+checkresiduals(nnetar_model)
+```
+
+
+The residual diagnostics for the NNETAR model show that the residuals are mostly centered around zero, indicating that the model has captured the general trend of the data well. The autocorrelation plot reveals that most lags fall within the confidence bounds, suggesting minimal autocorrelation in the residuals, which implies that the model effectively accounted for the time series dynamics. However, there are a few spikes in the autocorrelation function that indicate some remaining dependencies. Overall, the residuals appear approximately normally distributed, although there is some minor deviation.
 
 ## Prophet (Jiaxuan)
+fit and summary
 ```{R, include = T, echo = T, warning = F, message = F}
-
+# Fit the Prophet model to the training data
+train_df <- data.frame(ds = time(train_data), y = as.numeric(train_data))
+prophet_model <- prophet(train_df)
+summary(prophet_model)
 ```
+
+The Prophet model summary indicates key components, such as growth for trend type, changepoints to handle structural changes, and multiple seasonality options (yearly, weekly, daily). It also includes attributes like holidays and various priors for regularization. These attributes provide control over trend flexibility, seasonal components, and other time series characteristics, making Prophet versatile for capturing complex seasonality and trend patterns in time series data.
+
+Preidict
+```{R, include = T, echo = T, warning = F, message = F}
+# Perform step-ahead forecasting with Prophet
+prophet_forecast = predict(prophet_model, periods = len(test_data)) #forecast the length of test, since it does not handle ts object here
+#here I am not exactly sure why generates almost 3000 even if I did periods = 746
+
+# Extract only the forecasted values
+prophet_forecast_values <- prophet_forecast$yhat 
+
+# Convert Prophet forecast to a time series aligned with the testing set
+prophet_forecast_ts <- ts(prophet_forecast_values[1:746], 
+                          start = time(test_data)[1], 
+                          frequency = frequency(all_data))
+
+# Plot training data, testing data, and Prophet forecast
+autoplot(train_data, series = "Training Data") +
+  autolayer(test_data, series = "Testing Data") +
+  autolayer(prophet_forecast_ts, series = "Prophet Forecast") +
+  ggtitle("Prophet Step-Ahead Forecast with Training and Testing Data") +
+  ylab("Returns") +
+  xlab("Time") +
+  theme_minimal() +
+  scale_color_manual(values = c("red", "grey", "green")) +
+  labs(color = "Series")
+```
+Again, the prediction is nearly horizontal, and seemingly less volatile to test set, not very sure why it while required.
+
+model performance
+```{R, include = T, echo = T, warning = F, message = F}
+# Calculate accuracy metrics for Prophet
+prophet_accuracy <- accuracy(prophet_forecast_ts, test_data)
+
+# Display the accuracy metrics
+print(prophet_accuracy)
+```
+The accuracy metrics for the Prophet model show a mean error of approximately 0.0017 and a root mean square error of 0.0251, indicating a relatively small error between predicted and actual values. The mean absolute error is around 0.0174, while the mean percentage error and mean absolute percentage error are 97.39% and 138.93%, respectively, suggesting some bias and magnitude of forecasting error. Theil's U statistic is approximately 1.007, which indicates that the forecasting performance is similar to using a naive model.
+
+Check residuals
+```{R, include = T, echo = T, warning = F, message = F}
+# Calculate residuals for the Prophet model
+prophet_residuals <- test_data - prophet_forecast_ts
+
+# Plot residuals
+autoplot(prophet_residuals) +
+  ggtitle("Residuals of Prophet Model") +
+  ylab("Residuals") +
+  xlab("Time") +
+  theme_minimal()
+
+# Check residual diagnostics
+checkresiduals(prophet_residuals)
+```
+
+
+The residual analysis of the Prophet model shows that residuals fluctuate around zero, indicating that the model generally captures the trend. However, some significant spikes suggest the presence of outliers or periods where the model struggled to capture the variability accurately. The autocorrelation function (ACF) plot shows some minor lags outside the confidence intervals, implying that some temporal structure might still be present in the residuals, meaning there is room for improvement in capturing dependencies. The histogram of residuals shows a roughly normal distribution, indicating that the residual errors are reasonably spread out, but the presence of skew or kurtosis needs further investigation.
 
 ## Combination (Marc)
 ```{R, include = T, echo = T, warning = F, message = F}
