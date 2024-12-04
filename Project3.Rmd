@@ -331,7 +331,7 @@ autoplot(train_data, series = "Training Data") +
 
 We will proceed to analyze the model performance as follows:
 
-```{r}
+```{R, include = T, echo = T, warning = F, message = F}
 # Calculate accuracy metrics for Combination Forecast
 combination_accuracy <- accuracy(Combination, test_data)
 
@@ -341,7 +341,7 @@ print(combination_accuracy)
 
 We will proceed to check the residuals as follows:
 
-```{r}
+```{R, include = T, echo = T, warning = F, message = F}
 # Calculate residuals for the Combination model
 combination_residuals <- test_data - Combination
 
