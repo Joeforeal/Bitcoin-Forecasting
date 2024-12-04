@@ -10,7 +10,9 @@ library(quantmod)
 library(forecast)
 library(tseries)
 library(ggplot2)
+library(prophet)
 ```
+
 # Introduction
 
 Bitcoin, the world's first decentralized cryptocurrency, has become a focal point of interest for financial analysts, data scientists, and economists. Since its inception in 2009, Bitcoin has witnessed a meteoric rise in popularity and valuation, making it a significant subject of study in the realm of financial forecasting. Forecasting Bitcoin returns is particularly challenging due to its inherent volatility, speculative nature, and sensitivity to global economic events.
@@ -37,7 +39,7 @@ tsdisplay(bitcoin_ts, main = "Original Bitcoin Prices")
 
 From the graph of bitcoin prices, we observed that the data has an obvious upward trend with some potential cycles. However, since most of the models prefer stationary data and our research questions is focus on the returns of the bitcoin prices in order to observe the dynamic of market, we are now taking the difference to get the returns and check for the staionarity.
 
-```{R, include = T, echo = T, warning = F, message = F} 
+```{R, include = T, echo = T, warning = F, message = F}
 bitcoin_returns <- diff(log(bitcoin_prices))
 bitcoin_returns <- na.omit(bitcoin_returns)
 
@@ -47,7 +49,7 @@ tsdisplay(bitcoin_returns, main = "Bitcoin Returns")
 
 Compared with the Bitcoin prices graph, the Bitcoin returns are much more similar to the white noises; however, there are still some spikes in the ACF and PACF, so we need to use some further official methods - ADF test - to determine the stationarity of the Bitcoin Returns Data.
 
-```{R, include = T, echo = T, warning = F, message = F} 
+```{R, include = T, echo = T, warning = F, message = F}
 # Test for stationarity of the returns
 adf_test_returns <- adf.test(bitcoin_returns)
 print(adf_test_returns)
@@ -84,6 +86,7 @@ test_data <- ts(test_data, start = time(all_data)[train_size + 1],
 Now, the data has been split into 80% for training and the remianing 20% for testing. We're going to use `train_data` and `test_data` in order to build models and test for the models.
 
 # Results
+
 ## ARIMA
 
 For this step, we're going to build the arima model by using the training set and then forecast the testing set part, which has a forecast_horizon of 20% of the dataset.
@@ -98,9 +101,7 @@ summary(arima_model)
 
 From the summary of the arima model, we noticed that the model includes two autoregressive terms (AR) and no moving average terms (MA). Since the data is already stationary, no differencing should be applied.
 
-The weak AR coefficients suggest that past values (lags) have limited influence on the current values.
-- ar1 = -0.0195: Indicates a weak, slightly negative influence of the first lag on the current value.
-- ar2 = 0.0064: Indicates an even weaker positive influence of the second lag.
+The weak AR coefficients suggest that past values (lags) have limited influence on the current values. - ar1 = -0.0195: Indicates a weak, slightly negative influence of the first lag on the current value. - ar2 = 0.0064: Indicates an even weaker positive influence of the second lag.
 
 ```{R, include = T, echo = T, warning = F, message = F}
 # Test for AIC and BIC
@@ -111,7 +112,6 @@ cat("The AIC of the arima model is: ",
 ```
 
 Since the AIC and BIC are necessary when choosing a final model, we're listing the AIC and BIC above for further comparsions.
-
 
 After building the model, let's forecast it:
 
@@ -145,6 +145,7 @@ arima_accuracy <- accuracy(arima_forecast, test_data)
 # Display the accuracy metrics
 print(arima_accuracy)
 ```
+
 The accuracy metrics for the ARIMA model reveal its performance characteristics. The small Mean Error (ME) of 0.00116 suggests a slight positive bias, while the Root Mean Squared Error (RMSE) of 0.02498 and Mean Absolute Error (MAE) of 0.01739 indicate relatively low forecast errors, with RMSE penalizing larger errors more heavily. The unusually high Mean Percentage Error (MPE) and Mean Absolute Percentage Error (MAPE) values (140.80% and 173.84%) are likely inflated by near-zero actual values in the test set. The minimal Autocorrelation of Residuals (ACF1) at -0.02708 is a positive sign, indicating no significant correlation in residuals. However, the Theil’s U statistic of 1.046 suggests the model's performance is only slightly better than a naïve forecast.
 
 Examining residuals is a critical step in time series analysis to validate model assumptions and ensure its adequacy. Residuals should ideally resemble white noise, meaning they are uncorrelated, normally distributed, and have constant variance over time. Any patterns or significant autocorrelation in residuals could indicate that the model fails to capture important structures in the data. To further assess the ARIMA model's validity, we will now evaluate its residuals through diagnostic plots and statistical tests.
@@ -161,18 +162,21 @@ From the Histogram of Residuals (Bottom Right), we observed a slight deviation f
 After evaluating the ARIMA model, we will next explore the ETS (Error, Trend, Seasonality) model, which is well-suited for capturing exponential smoothing patterns in time series data. Unlike ARIMA, the ETS model explicitly handles trend and seasonality components. This makes it particularly effective for modeling data with clear level shifts or seasonal patterns, providing an alternative perspective on Bitcoin returns.
 
 ## ETS (Reagan)
+
 ```{R, include = T, echo = T, warning = F, message = F}
 
 ```
 
 ## Holt-Winters (Reagan)
+
 ```{R, include = T, echo = T, warning = F, message = F}
 
 ```
 
-
 ## NNETAR (Jiaxuan)
-fit and summary
+
+We will proceed to fit a NNETAR model to our data as follows:
+
 ```{R, include = T, echo = T, warning = F, message = F}
 # Fit the NNETAR model to the training data
 nnetar_model <- nnetar(train_data)
@@ -180,9 +184,11 @@ nnetar_model <- nnetar(train_data)
 # Print the NNETAR model summary
 summary(nnetar_model)
 ```
+
 From model summary, the NNETAR model uses a single hidden layer with basic lag parameters and produces forecasts by averaging results from multiple models to capture non-linear patterns in the data.
 
-predict
+We will proceed to forecast as follows:
+
 ```{R, include = T, echo = T, warning = F, message = F}
 # Generate forecasts for the testing period using NNETAR
 nnetar_forecast <- forecast(nnetar_model, h = forecast_horizon)
@@ -203,10 +209,11 @@ autoplot(train_data, series = "Training Data") +
   scale_color_manual(values = c("red", "grey", "blue")) +
   labs(color = "Series")
 ```
+
 From the plots, the NNETAR forecast is a horizontal line. It is reasonable since the data is stationary, seeming ly less volatile than test set.
 
-
 Model preformance validation (AIC/BIC omitted since unsupported by neural networks)
+
 ```{R, include = T, echo = T, warning = F, message = F}
 # Calculate accuracy metrics for NNETAR
 nnetar_accuracy <- accuracy(nnetar_forecast, test_data)
@@ -215,21 +222,21 @@ nnetar_accuracy <- accuracy(nnetar_forecast, test_data)
 print(nnetar_accuracy)
 ```
 
-
-
 The accuracy metrics for the ARIMA model show an RMSE of 0.0249 and an MAE of 0.0174, indicating reasonable predictive accuracy. The Mean Error is quite low at 0.0013, suggesting minimal bias in the forecasts. However, the Mean Percentage Error and Mean Absolute Percentage Error are relatively high, indicating that there are substantial relative errors, which may be due to high volatility in the data. The acf of 0.027 is higher than the original data, suggesting weaker stationarity Theil's U statistic, close to 1, suggests that the model performs similarly to a naive benchmark model.
 
-Check for residuals:
+We will proceed to check the residuals as follows:
+
 ```{R, include = T, echo = T, warning = F, message = F}
 # Check residual diagnostics for the NNETAR model
 checkresiduals(nnetar_model)
 ```
 
-
 The residual diagnostics for the NNETAR model show that the residuals are mostly centered around zero, indicating that the model has captured the general trend of the data well. The autocorrelation plot reveals that most lags fall within the confidence bounds, suggesting minimal autocorrelation in the residuals, which implies that the model effectively accounted for the time series dynamics. However, there are a few spikes in the autocorrelation function that indicate some remaining dependencies. Overall, the residuals appear approximately normally distributed, although there is some minor deviation.
 
 ## Prophet (Jiaxuan)
-fit and summary
+
+We will proceed to fit a prophet model to our data as follows:
+
 ```{R, include = T, echo = T, warning = F, message = F}
 # Fit the Prophet model to the training data
 train_df <- data.frame(ds = time(train_data), y = as.numeric(train_data))
@@ -239,14 +246,15 @@ summary(prophet_model)
 
 The Prophet model summary indicates key components, such as growth for trend type, changepoints to handle structural changes, and multiple seasonality options (yearly, weekly, daily). It also includes attributes like holidays and various priors for regularization. These attributes provide control over trend flexibility, seasonal components, and other time series characteristics, making Prophet versatile for capturing complex seasonality and trend patterns in time series data.
 
-Preidict
+We will proceed to perform the forecast as follows:
+
 ```{R, include = T, echo = T, warning = F, message = F}
 # Perform step-ahead forecasting with Prophet
 prophet_forecast = predict(prophet_model, periods = len(test_data)) #forecast the length of test, since it does not handle ts object here
 #here I am not exactly sure why generates almost 3000 even if I did periods = 746
 
 # Extract only the forecasted values
-prophet_forecast_values <- prophet_forecast$yhat 
+prophet_forecast_values <- prophet_forecast$yhat
 
 # Convert Prophet forecast to a time series aligned with the testing set
 prophet_forecast_ts <- ts(prophet_forecast_values[1:746], 
@@ -264,9 +272,11 @@ autoplot(train_data, series = "Training Data") +
   scale_color_manual(values = c("red", "grey", "green")) +
   labs(color = "Series")
 ```
+
 Again, the prediction is nearly horizontal, and seemingly less volatile to test set, not very sure why it while required.
 
-model performance
+Let us assess the accuracy of or model as follows:
+
 ```{R, include = T, echo = T, warning = F, message = F}
 # Calculate accuracy metrics for Prophet
 prophet_accuracy <- accuracy(prophet_forecast_ts, test_data)
@@ -274,9 +284,11 @@ prophet_accuracy <- accuracy(prophet_forecast_ts, test_data)
 # Display the accuracy metrics
 print(prophet_accuracy)
 ```
+
 The accuracy metrics for the Prophet model show a mean error of approximately 0.0017 and a root mean square error of 0.0251, indicating a relatively small error between predicted and actual values. The mean absolute error is around 0.0174, while the mean percentage error and mean absolute percentage error are 97.39% and 138.93%, respectively, suggesting some bias and magnitude of forecasting error. Theil's U statistic is approximately 1.007, which indicates that the forecasting performance is similar to using a naive model.
 
-Check residuals
+We will proceed to check the residuals:
+
 ```{R, include = T, echo = T, warning = F, message = F}
 # Calculate residuals for the Prophet model
 prophet_residuals <- test_data - prophet_forecast_ts
@@ -292,15 +304,60 @@ autoplot(prophet_residuals) +
 checkresiduals(prophet_residuals)
 ```
 
-
 The residual analysis of the Prophet model shows that residuals fluctuate around zero, indicating that the model generally captures the trend. However, some significant spikes suggest the presence of outliers or periods where the model struggled to capture the variability accurately. The autocorrelation function (ACF) plot shows some minor lags outside the confidence intervals, implying that some temporal structure might still be present in the residuals, meaning there is room for improvement in capturing dependencies. The histogram of residuals shows a roughly normal distribution, indicating that the residual errors are reasonably spread out, but the presence of skew or kurtosis needs further investigation.
 
 ## Combination (Marc)
+
+Let us perform a combination fit by averaging the forecasted values of our values:
+
 ```{R, include = T, echo = T, warning = F, message = F}
 
+# Create the combination forecast
+Num_Models <- 3
+prophetforecast_adjusted <- prophet_forecast$yhat[1:forecast_horizon]
+Combination <- (arima_forecast+nnetar_forecast+prophetforecast_adjusted)/Num_Models
+
+# Plot training data, testing data, and Combination forecast
+autoplot(train_data, series = "Training Data") +
+  autolayer(test_data, series = "Testing Data") +
+  autolayer(Combination, series = "Combination Forecast") +
+  ggtitle("Combination Step-Ahead Forecast with Training and Testing Data") +
+  ylab("Returns") +
+  xlab("Time") +
+  theme_minimal() +
+  scale_color_manual(values = c("red", "grey", "green")) +
+  labs(color = "Series")
+```
+
+We will proceed to analyze the model performance as follows:
+
+```{r}
+# Calculate accuracy metrics for Combination Forecast
+combination_accuracy <- accuracy(Combination, test_data)
+
+# Display the accuracy metrics
+print(combination_accuracy)
+```
+
+We will proceed to check the residuals as follows:
+
+```{r}
+# Calculate residuals for the Combination model
+combination_residuals <- test_data - Combination
+
+# Plot residuals
+autoplot(combination_residuals) +
+  ggtitle("Residuals of Combination Model") +
+  ylab("Residuals") +
+  xlab("Time") +
+  theme_minimal()
+
+# Check residual diagnostics
+checkresiduals(combination_residuals)
 ```
 
 # Conclusion & Future Works
 
 # References
+
 Becker, R. A., Chambers, J. M. and Wilks, A. R. (1988) The New S Language. Wadsworth & Brooks/Cole.
