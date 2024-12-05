@@ -162,6 +162,7 @@ From the Histogram of Residuals (Bottom Right), we observed a slight deviation f
 After evaluating the ARIMA model, we will next explore the ETS (Error, Trend, Seasonality) model, which is well-suited for capturing exponential smoothing patterns in time series data. Unlike ARIMA, the ETS model explicitly handles trend and seasonality components. This makes it particularly effective for modeling data with clear level shifts or seasonal patterns, providing an alternative perspective on Bitcoin returns.
 
 ## ETS (Reagan)
+
 ```{R, include = T, echo = T, warning = F, message = F}
 # Fit the ETS model to the training data
 ets_model <- ets(train_data)
@@ -169,6 +170,7 @@ ets_model <- ets(train_data)
 # Print the ETS model summary
 summary(ets_model)
 ```
+
 The ETS(A,N,N) model effectively captures the stationary nature of Bitcoin returns by assuming additive error, no trend, and no seasonality. With a low smoothing parameter (𝛼=0.0033) and minimal residual autocorrelation (ACF1 = -0.0224), the model demonstrates reliable performance, though its simplicity may limit its ability to handle Bitcoin's high volatility.
 
 ```{R, include = T, echo = T, warning = F, message = F}
@@ -191,6 +193,7 @@ autoplot(train_data, series = "Training Data") +
   scale_color_manual(values = c("red", "grey", "blue")) +
   labs(color = "Series")
 ```
+
 The ETS(A,N,N) model produces a stable forecast (red line) that aligns with the stationary nature of Bitcoin returns, while the actual testing data (grey line) demonstrates significant volatility. This highlights the model's inability to fully capture the unpredictable fluctuations of Bitcoin returns, as it smooths over the extreme variations observed in the testing data.
 
 ```{R, include = T, echo = T, warning = F, message = F}
@@ -200,12 +203,14 @@ ets_accuracy <- accuracy(ets_forecast_ts, test_data)
 # Display the accuracy metrics
 print(ets_accuracy)
 ```
+
 The ETS(A,N,N) model shows reasonable performance with a low RMSE (0.0252) and MAE (0.0175), indicating moderate forecasting accuracy for Bitcoin returns. However, the high MAPE (193.12%) and MPE (46.57%) reveal challenges in handling extreme volatility and small values in the testing dataset, reflecting the limitations of the model in highly erratic financial markets.
 
 ```{R, include = T, echo = T, warning = F, message = F}
 # Check residual diagnostics for the ETS model
 checkresiduals(ets_model)
 ```
+
 The residual diagnostics for the ETS(A,N,N) model show that residuals are centered around zero with no significant autocorrelation, as confirmed by the Ljung-Box test (p-value = 0.05839). However, some residual spikes and slight deviations from normality suggest that the model does not fully capture all dynamics, especially during volatile periods.
 
 ## Holt-Winters (Reagan)
@@ -217,6 +222,7 @@ holtwinters_model <- HoltWinters(train_data, beta = FALSE, gamma = FALSE)
 # Print the Holt-Winters model summary
 summary(holtwinters_model)
 ```
+
 The Holt-Winters model applied to the training data used a smoothing parameter (alpha) to effectively capture the stationary behavior of Bitcoin returns, while excluding trend (beta=FALSE) and seasonality (gamma=FALSE). The model's results, including fitted values and a calculated Sum of Squared Errors (SSE), demonstrate its ability to produce stable and reliable forecasts for the volatile returns dataset.
 
 ```{R, include = T, echo = T, warning = F, message = F}
@@ -241,6 +247,7 @@ autoplot(train_data, series = "Training Data") +
 
 
 ```
+
 The Holt-Winters forecast (red line) produces a stable and nearly horizontal prediction aligned with the stationary nature of Bitcoin returns, capturing the level dynamics of the training data. While the forecast appears less volatile than the testing data (gray line), it highlights the model's inability to fully adapt to extreme fluctuations in the returns.
 
 ```{R, include = T, echo = T, warning = F, message = F}
@@ -250,6 +257,7 @@ holtwinters_accuracy <- accuracy(holtwinters_forecast_ts, test_data)
 # Display the accuracy metrics
 print(holtwinters_accuracy)
 ```
+
 The accuracy metrics for the Holt-Winters model indicate a Mean Error (ME) of 0.007, suggesting a slight positive bias, and a Root Mean Squared Error (RMSE) of 0.0259, reflecting moderate forecast errors. However, the high Mean Absolute Percentage Error (MAPE) of 411.84% highlights the model's struggle to handle the extreme volatility in Bitcoin returns, despite an overall reasonable performance as indicated by Theil's U statistic of 0.94, which shows it outperforms a naïve model.
 
 ```{R, include = T, echo = T, warning = F, message = F}
@@ -266,6 +274,7 @@ autoplot(holtwinters_residuals) +
 # Check residual diagnostics
 checkresiduals(holtwinters_model)
 ```
+
 The residual analysis of the Holt-Winters model shows that the residuals fluctuate around zero, indicating no significant bias in the forecast. The autocorrelation function (ACF) plot reveals minor autocorrelation at specific lags, but most values remain within the confidence bounds, suggesting that the model captures the overall structure of the data. The Ljung-Box test yields a p-value of 0.06074, which is slightly above the 0.05 threshold, indicating that the residuals are approximately uncorrelated and resemble white noise. However, the presence of outliers and deviations in the histogram of residuals suggests that the model struggles with extreme values in the data.
 
 ## NNETAR (Jiaxuan)
@@ -408,9 +417,11 @@ Let us perform a combination fit by averaging the forecasted values of our value
 ```{R, include = T, echo = T, warning = F, message = F}
 
 # Create the combination forecast
-Num_Models <- 3
+Num_Models <- 5
 prophetforecast_adjusted <- prophet_forecast$yhat[1:forecast_horizon]
-Combination <- (arima_forecast+nnetar_forecast+prophetforecast_adjusted)/Num_Models
+Combination <- (arima_forecast+nnetar_forecast+
+prophetforecast_adjusted+ets_forecast[["mean"]]+
+holtwinters_forecast[["mean"]])/Num_Models
 
 # Plot training data, testing data, and Combination forecast
 autoplot(train_data, series = "Training Data") +
@@ -434,6 +445,8 @@ combination_accuracy <- accuracy(Combination, test_data)
 print(combination_accuracy)
 ```
 
+The accuracy metrics for the Combined model show a mean error of approximately 0.0031 and a root mean square error of 0.0251, indicating a relatively small error between predicted and actual values. The mean absolute error is around 0.0174, while the mean percentage error and mean absolute percentage error are 72.46% and 138.82%, respectively, suggesting some bias. Theil's U statistic is approximately 0.977, which indicates that the forecasting performance is similar to using a naive model.
+
 We will proceed to check the residuals as follows:
 
 ```{R, include = T, echo = T, warning = F, message = F}
@@ -450,6 +463,8 @@ autoplot(combination_residuals) +
 # Check residual diagnostics
 checkresiduals(combination_residuals)
 ```
+
+The residual analysis of the Combined model shows that residuals mean revert around zero, indicating that the model captures the trend. However, some significant spikes in the residuals suggest the presence of outliers. The autocorrelation function (ACF) plot shows some minor lags outside the confidence intervals, implying that there are a few dynamics that could be captured in the residuals. The histogram of residuals shows a roughly normal distribution, indicating that the residual errors are reasonably spread out.
 
 # Conclusion & Future Works
 
