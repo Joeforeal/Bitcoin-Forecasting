@@ -480,6 +480,8 @@ For future research, several avenues could be explored to improve forecasting ac
 
 3.  **Incorporating Exogenous Variables**: Future models could integrate external factors (e.g., trading volume, macroeconomic indicators, or sentiment analysis from social media) to account for additional information that influences Bitcoin price movements.
 
+4.  **MAPA Models**: The Multiple Aggregation Prediction Algorithm (MAPA) could enhance forecast accuracy by aggregating forecasts at different temporal resolutions. This approach captures both short-term volatility and long-term patterns, addressing Bitcoin returns' high variability and improving predictive robustness.
+
 By pursuing these directions, we can further refine the predictive capabilities and robustness of models for Bitcoin price forecasting.
 
 # References
