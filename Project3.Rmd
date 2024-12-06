@@ -37,7 +37,7 @@ bitcoin_ts <- ts(bitcoin_prices, frequency = 365)
 tsdisplay(bitcoin_ts, main = "Original Bitcoin Prices")
 ```
 
-From the graph of bitcoin prices, we observed that the data has an obvious upward trend with some potential cycles. However, since most of the models prefer stationary data and our research questions is focus on the returns of the bitcoin prices in order to observe the dynamic of market, we are now taking the difference to get the returns and check for the staionarity.
+From the graph of bitcoin prices, we observed that the data has an obvious upward trend with some potential cycles. However, since most of the models prefer stationary data and our research questions is focus on the returns of the bitcoin prices in order to observe the dynamic of market, we are now taking the difference to get the returns and check for the stationary.
 
 ```{R, include = T, echo = T, warning = F, message = F}
 bitcoin_returns <- diff(log(bitcoin_prices))
@@ -57,7 +57,7 @@ print(adf_test_returns)
 
 From the p-value of the Augmented Dickey-Fuller Test, we found a significant result, which allows us to reject the null hypothesis and conclude that the Bitcoin returns data is stationary.
 
-After confirming the stationarity of the data, we are now splitting the data into training and testing sets to forecast using the same dataset for all models, allowing for a horizontal comparison.
+After confirming the stationary of the data, we are now splitting the data into training and testing sets to forecast using the same data set for all models, allowing for a horizontal comparison.
 
 ```{R, include = T, echo = T, warning = F, message = F}
 # Define the training set size as 80% of the total dataset
@@ -467,6 +467,20 @@ checkresiduals(combination_residuals)
 The residual analysis of the Combined model shows that residuals mean revert around zero, indicating that the model captures the trend. However, some significant spikes in the residuals suggest the presence of outliers. The autocorrelation function (ACF) plot shows some minor lags outside the confidence intervals, implying that there are a few dynamics that could be captured in the residuals. The histogram of residuals shows a roughly normal distribution, indicating that the residual errors are reasonably spread out.
 
 # Conclusion & Future Works
+
+Among the six models evaluated, using MAPE as the metric for accuracy, the Combination Forecast outperformed the others with the lowest MAPE of **138.0643**, while the Holt-Winters model had the highest MAPE at **411.77**, indicating the poorest performance. This result aligns with the principle of diversification gains, as combining forecasts from multiple models can capture different aspects of the data and mitigate individual model biases.
+
+While the irrelevance proposition suggests that forecast combinations are unnecessary under ideal conditions—such as no model misspecification, infinite data samples (eliminating estimation error), and full access to the underlying information sets—these conditions are rarely satisfied in practice, particularly in a noisy and highly volatile market like Bitcoin. Consequently, our findings confirm that a forecast combination provides a more robust and accurate prediction in such an environment.
+
+For future research, several avenues could be explored to improve forecasting accuracy and better account for the noise in Bitcoin price data:
+
+1.  **Kalman Filter**: Applying a Kalman Filter to model Bitcoin prices could be beneficial, as it is well-suited for handling noisy and dynamic systems. This approach could help in smoothing the noise and capturing latent structures in the price dynamics.
+
+2.  **ARCH/GARCH Models**: To model the volatility inherent in Bitcoin prices, fitting an ARCH (Autoregressive Conditional Heteroskedasticity) or GARCH (Generalized ARCH) model could provide valuable insights. These models are particularly effective in capturing time-varying volatility and clustering effects often observed in financial data.
+
+3.  **Incorporating Exogenous Variables**: Future models could integrate external factors (e.g., trading volume, macroeconomic indicators, or sentiment analysis from social media) to account for additional information that influences Bitcoin price movements.
+
+By pursuing these directions, we can further refine the predictive capabilities and robustness of models for Bitcoin price forecasting.
 
 # References
 
